@@ -29,8 +29,8 @@ def load_model(models_dir: Path, model_id: str) -> nn.Module:
     return model
 
 
-def transcribe(model: nn.Module, audio: np.ndarray) -> tuple[str, float]:
-    """Returns (transcript, rtf)."""
+def transcribe(model: nn.Module, audio: np.ndarray) -> tuple[str, float, float, float]:
+    """Returns (transcript, audio_duration_s, transcription_time_s, rtf)."""
     audio_duration = len(audio) / SAMPLE_RATE
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
         sf.write(tmp.name, audio, SAMPLE_RATE)
@@ -40,12 +40,12 @@ def transcribe(model: nn.Module, audio: np.ndarray) -> tuple[str, float]:
     text = result.text if hasattr(result, "text") else str(result)
     rtf = transcription_time / audio_duration if audio_duration > 0 else 0.0
     print(f"[STT] audio={audio_duration:.2f}s  transcription={transcription_time:.2f}s  RTF={rtf:.3f}")
-    return text, rtf
+    return text, audio_duration, transcription_time, rtf
 
 
 def listen_loop(
     model: nn.Module,
-    on_transcript: Callable[[str, float], None],
+    on_transcript: Callable[[str, float, float, float], None],
     stop_event: threading.Event,
 ) -> None:
     audio_buf: list[np.ndarray] = []
@@ -67,7 +67,6 @@ def listen_loop(
     def on_release(key):
         if key == keyboard.Key.cmd and _recording.is_set():
             _recording.clear()
-            # drain the queue into the buffer
             while not audio_q.empty():
                 audio_buf.append(audio_q.get_nowait())
             if not audio_buf:
@@ -77,10 +76,10 @@ def listen_loop(
             if len(audio) / SAMPLE_RATE < 0.4:
                 print("[STT] Too short, ignoring.")
                 return
-            text, rtf = transcribe(model, audio)
+            text, audio_dur, trans_time, rtf = transcribe(model, audio)
             text = text.strip()
             if text:
-                on_transcript(text, rtf)
+                on_transcript(text, audio_dur, trans_time, rtf)
 
     listener = keyboard.Listener(on_press=on_press, on_release=on_release)
     listener.start()
@@ -98,7 +97,7 @@ def listen_loop(
 
 def start(
     model: nn.Module,
-    on_transcript: Callable[[str, float], None],
+    on_transcript: Callable[[str, float, float, float], None],
 ) -> tuple[threading.Thread, threading.Event]:
     stop_event = threading.Event()
     t = threading.Thread(target=listen_loop, args=(model, on_transcript, stop_event), daemon=True)
@@ -116,7 +115,7 @@ if __name__ == "__main__":
     MODELS_DIR = Path(__file__).parent.parent / _cfg["models_dir"]
 
     model = load_model(models_dir=MODELS_DIR, model_id=MODEL_ID)
-    thread, stop_event = start(model, lambda text, rtf: print(f"\n[STT transcript] {text}  (RTF={rtf:.3f})\n"))
+    thread, stop_event = start(model, lambda text, audio_dur, trans_time, rtf: print(f"\n[STT transcript] {text}  (RTF={rtf:.3f})\n"))
     try:
         while True:
             time.sleep(1)

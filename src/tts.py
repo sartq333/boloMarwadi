@@ -1,4 +1,5 @@
 import re
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -47,18 +48,28 @@ def load_model(models_dir: Path, language: str, model_url: str) -> Synthesizer:
     return model
 
 
-def synthesize(model: Synthesizer, text: str, speaker: str) -> np.ndarray:
-    text = _clean_for_tts(text)
-    if len(text) < 3:
-        return np.zeros(1, dtype=np.float32)
-    wav = model.tts(text, speaker_name=speaker)
-    return np.array(wav, dtype=np.float32)
+def synthesize(model: Synthesizer, text: str, speaker: str) -> tuple[np.ndarray, int, int, bool]:
+    """Returns (audio, input_chars, cleaned_chars, text_truncated)."""
+    input_len = len(text)
+    cleaned = _clean_for_tts(text)
+    cleaned_len = len(cleaned)
+    text_truncated = cleaned_len < input_len
+    if cleaned_len < 3:
+        return np.zeros(1, dtype=np.float32), input_len, cleaned_len, text_truncated
+    wav = model.tts(cleaned, speaker_name=speaker)
+    return np.array(wav, dtype=np.float32), input_len, cleaned_len, text_truncated
 
 
-def speak(model: Synthesizer, text: str, speaker: str, sample_rate: int) -> None:
-    audio = synthesize(model, text, speaker)
+def speak(model: Synthesizer, text: str, speaker: str,
+          sample_rate: int) -> tuple[float, float, int, int, bool]:
+    """Returns (audio_duration_s, synthesis_time_s, input_chars, cleaned_chars, text_truncated)."""
+    t0 = time.time()
+    audio, input_len, cleaned_len, text_truncated = synthesize(model, text, speaker)
+    synthesis_time = time.time() - t0
+    audio_duration = len(audio) / sample_rate
     sd.play(audio, samplerate=sample_rate)
     sd.wait()
+    return audio_duration, synthesis_time, input_len, cleaned_len, text_truncated
 
 
 if __name__ == "__main__":

@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,8 @@ def generate_response(
     user_text: str,
     system_prompt: str,
     max_tokens: int,
-) -> str:
+) -> tuple[str, int, int, float, bool]:
+    """Returns (text, input_tokens, output_tokens, generation_time_s, truncated)."""
     messages = [
         {"role": "system", "content": system_prompt},
         {"role": "user", "content": user_text},
@@ -29,7 +31,13 @@ def generate_response(
     prompt = tokenizer.apply_chat_template(
         messages, add_generation_prompt=True, tokenize=False
     )
-    return generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens, verbose=False)
+    t0 = time.time()
+    response = generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens, verbose=False)
+    gen_time = time.time() - t0
+    input_tokens = len(tokenizer.encode(prompt))
+    output_tokens = len(tokenizer.encode(response))
+    truncated = output_tokens >= max_tokens
+    return response, input_tokens, output_tokens, gen_time, truncated
 
 
 if __name__ == "__main__":
@@ -49,8 +57,8 @@ if __name__ == "__main__":
             user_input = input("You: ").strip()
             if not user_input:
                 continue
-            response = generate_response(model, tokenizer, user_input, SYSTEM_PROMPT, MAX_TOKENS)
-            print(f"Motiram: {response}\n")
+            response, _, _, gen_time, truncated = generate_response(model, tokenizer, user_input, SYSTEM_PROMPT, MAX_TOKENS)
+            print(f"Motiram: {response}  ({gen_time:.1f}s{'  [TRUNCATED]' if truncated else ''})\n")
         except KeyboardInterrupt:
             print("\n[LLM] Bye!")
             break
