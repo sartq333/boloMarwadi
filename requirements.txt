@@ -1,0 +1,12 @@
+mlx
+mlx-lm
+mlx-audio
+huggingface_hub
+TTS
+sounddevice
+soundfile
+numpy
+scipy
+pyyaml
+
+websockets

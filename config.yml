@@ -1,0 +1,21 @@
+llm:
+  model_id: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  models_dir: "models/llm"
+  max_tokens: 100
+  system_prompt: "prompts/marwadi_system.md"
+
+tts:
+  sample_rate: 22050
+  language: "raj"
+  speaker: "male"
+  models_dir: "models/tts"
+  model_url: "https://github.com/AI4Bharat/Indic-TTS/releases/download/v1-checkpoints-release/raj.zip"
+
+stt:
+  sample_rate: 16000
+  block_size: 512
+  silence_rms_threshold: 0.01
+  silence_cutoff_s: 0.8
+  min_utterance_s: 0.4
+  model_id: "mlx-community/Voxtral-Mini-4B-Realtime-2602-4bit"
+  models_dir: "models/stt"

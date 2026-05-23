@@ -1,0 +1,3 @@
+# boloMarwadi
+
+this is just a simple fun/creative project which i thought would be cool to build, as i'm not able to find any native speakers of my language at the place i currently live in. this was mostly vibe coded with the help of claude code on a weekend while i was having my breakfast, so please don't get pissed off if this doesnt work in the way indented on your local system (it works perfectly fine on my m4 :)). 
