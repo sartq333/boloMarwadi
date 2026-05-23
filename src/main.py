@@ -39,12 +39,13 @@ async def ws_handler(ws) -> None:
 
 
 def main() -> None:
-    cfg = yaml.safe_load((Path(__file__).parent / "config.yml").read_text())
+    ROOT = Path(__file__).resolve().parent.parent
+    cfg = yaml.safe_load((ROOT / "config.yml").read_text())
 
     stt_cfg = cfg["stt"]
     llm_cfg = cfg["llm"]
     tts_cfg = cfg["tts"]
-    base = Path(__file__).parent
+    base = ROOT
 
     print("[Main] Loading models...")
     stt_model = stt.load_model(
@@ -111,7 +112,7 @@ def main() -> None:
     print("Ctrl+C to quit.\n")
 
     # open UI automatically
-    webbrowser.open(str(base / "index.html"))
+    webbrowser.open(str(base / "frontend" / "index.html"))
 
     thread, stop_event = stt.start(stt_model, on_transcript)
 

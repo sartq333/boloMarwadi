@@ -62,12 +62,13 @@ def speak(model: Synthesizer, text: str, speaker: str, sample_rate: int) -> None
 
 
 if __name__ == "__main__":
-    cfg = yaml.safe_load((Path(__file__).parent / "config.yml").read_text())["tts"]
+    ROOT = Path(__file__).resolve().parent.parent
+    cfg = yaml.safe_load((ROOT / "config.yml").read_text())["tts"]
 
     SAMPLE_RATE = cfg["sample_rate"]
     LANGUAGE    = cfg["language"]
     SPEAKER     = cfg["speaker"]
-    MODELS_DIR  = Path(__file__).parent / cfg["models_dir"]
+    MODELS_DIR  = ROOT / cfg["models_dir"]
     MODEL_URL   = cfg["model_url"]
 
     model = load_model(MODELS_DIR, LANGUAGE, MODEL_URL)

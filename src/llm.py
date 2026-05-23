@@ -33,12 +33,13 @@ def generate_response(
 
 
 if __name__ == "__main__":
-    cfg = yaml.safe_load((Path(__file__).parent / "config.yml").read_text())["llm"]
+    ROOT = Path(__file__).resolve().parent.parent
+    cfg = yaml.safe_load((ROOT / "config.yml").read_text())["llm"]
 
-    MODELS_DIR    = Path(__file__).parent / cfg["models_dir"]
+    MODELS_DIR    = ROOT / cfg["models_dir"]
     MODEL_ID      = cfg["model_id"]
     MAX_TOKENS    = cfg["max_tokens"]
-    SYSTEM_PROMPT = (Path(__file__).parent / cfg["system_prompt"]).read_text()
+    SYSTEM_PROMPT = (ROOT / cfg["system_prompt"]).read_text()
 
     model, tokenizer = load_model(MODELS_DIR, MODEL_ID)
 

@@ -13,7 +13,7 @@ from huggingface_hub import snapshot_download
 from mlx_audio.stt.utils import load as load_stt
 from pynput import keyboard
 
-_cfg = yaml.safe_load((Path(__file__).parent / "config.yml").read_text())["stt"]
+_cfg = yaml.safe_load((Path(__file__).parent.parent / "config.yml").read_text())["stt"]
 SAMPLE_RATE = _cfg["sample_rate"]
 BLOCK_SIZE  = _cfg["block_size"]
 
@@ -113,7 +113,7 @@ def stop(stop_event: threading.Event) -> None:
 
 if __name__ == "__main__":
     MODEL_ID   = _cfg["model_id"]
-    MODELS_DIR = Path(__file__).parent / _cfg["models_dir"]
+    MODELS_DIR = Path(__file__).parent.parent / _cfg["models_dir"]
 
     model = load_model(models_dir=MODELS_DIR, model_id=MODEL_ID)
     thread, stop_event = start(model, lambda text, rtf: print(f"\n[STT transcript] {text}  (RTF={rtf:.3f})\n"))
