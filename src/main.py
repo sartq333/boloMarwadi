@@ -1,10 +1,13 @@
 import asyncio
 import json
 import os
+import sys
 import threading
 import time
 import webbrowser
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent))
 
 import psutil
 import websockets
