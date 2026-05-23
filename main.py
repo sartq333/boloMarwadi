@@ -70,11 +70,12 @@ def main() -> None:
     def send(msg: dict) -> None:
         asyncio.run_coroutine_threadsafe(broadcast(msg), loop)
 
-    def on_transcript(text: str) -> None:
+    def on_transcript(text: str, rtf: float) -> None:
         nonlocal is_speaking
         if is_speaking:
             return
         print(f"\n[You]     {text}")
+        print(f"[STT]     RTF={rtf:.3f}")
         print(f"[RAM]     idle      → {_ram()}")
         send({"type": "transcript", "text": text})
 
