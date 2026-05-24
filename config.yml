@@ -1,5 +1,5 @@
 llm:
-  model_id: "mlx-community/Qwen2.5-7B-Instruct-4bit"
+  model_id: "mlx-community/Qwen2.5-1.5B-Instruct-4bit"
   models_dir: "models/llm"
   max_tokens: 100
   system_prompt: "prompts/marwadi_system.md"

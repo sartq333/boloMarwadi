@@ -2,7 +2,6 @@ import json
 import time
 from pathlib import Path
 
-
 class MetricsTracker:
     def __init__(self, logs_dir: Path) -> None:
         logs_dir.mkdir(exist_ok=True)

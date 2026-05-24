@@ -1,10 +1,14 @@
+import re
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Generator
 
 import yaml
 from huggingface_hub import snapshot_download
-from mlx_lm import generate, load
+from mlx_lm import generate, load, stream_generate
+
+_SENTENCE_SPLIT = re.compile(r'(?<=[.!?।])\s+')
+
 
 def load_model(models_dir: Path, model_id: str) -> tuple[Any, Any]:
     local_path = models_dir / model_id.split("/")[-1]
@@ -15,6 +19,57 @@ def load_model(models_dir: Path, model_id: str) -> tuple[Any, Any]:
     model, tokenizer = load(str(local_path))
     print("[LLM] Ready.")
     return model, tokenizer
+
+
+def stream_sentences(
+    model: Any,
+    tokenizer: Any,
+    user_text: str,
+    system_prompt: str,
+    max_tokens: int,
+) -> Generator[tuple[str, dict | None], None, None]:
+    """
+    Yields (sentence, stats) pairs.
+    stats is None for intermediate sentences; populated on the final yield:
+      {full_text, input_tokens, output_tokens, gen_time, truncated}
+    """
+    messages = [
+        {"role": "system", "content": system_prompt},
+        {"role": "user", "content": user_text},
+    ]
+    prompt = tokenizer.apply_chat_template(
+        messages, add_generation_prompt=True, tokenize=False
+    )
+    input_tokens = len(tokenizer.encode(prompt))
+
+    t0 = time.time()
+    buffer = ""
+    full_text = ""
+    output_tokens = 0
+
+    for chunk in stream_generate(model, tokenizer, prompt=prompt, max_tokens=max_tokens):
+        if not chunk.text:
+            continue
+        buffer += chunk.text
+        full_text += chunk.text
+        output_tokens += 1
+
+        parts = _SENTENCE_SPLIT.split(buffer)
+        for sentence in parts[:-1]:
+            if sentence.strip():
+                yield sentence.strip(), None
+        buffer = parts[-1]
+
+    gen_time = time.time() - t0
+    stats = {
+        "full_text": full_text.strip(),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "gen_time": gen_time,
+        "truncated": output_tokens >= max_tokens,
+    }
+    yield buffer.strip(), stats
+
 
 def generate_response(
     model: Any,

@@ -85,26 +85,54 @@ def main() -> None:
         tracker.log_stt(audio_dur, trans_time, rtf, text)
         send({"type": "transcript", "text": text})
 
-        response, in_tok, out_tok, gen_time, truncated = llm.generate_response(
-            llm_model, tokenizer, text, system_prompt, llm_cfg["max_tokens"]
-        )
-        print(f"[Motiram] {response}")
-        print(f"[LLM]     {out_tok} tokens  {out_tok/gen_time:.1f} tok/s  {'[TRUNCATED] ' if truncated else ''}({gen_time:.1f}s)")
-        print(f"[RAM]     after LLM → {_ram():.2f} GB")
-        tracker.log_llm(in_tok, out_tok, gen_time, truncated)
-        send({"type": "response", "text": response})
-
         is_speaking = True
         send({"type": "status", "state": "speaking"})
-        audio_dur_tts, synth_time, in_chars, clean_chars, txt_truncated = tts.speak(
-            tts_model, response, tts_cfg["speaker"], tts_cfg["sample_rate"]
-        )
-        print(f"[TTS]     RTF={synth_time/audio_dur_tts:.3f}  audio={audio_dur_tts:.2f}s  synth={synth_time:.2f}s")
+
+        in_tok = out_tok = 0
+        gen_time = 0.0
+        truncated = False
+        full_response = ""
+        total_audio_dur = total_synth_time = 0.0
+        total_in_chars = total_clean_chars = 0
+        tts_truncated = False
+
+        for sentence, stats in llm.stream_sentences(
+            llm_model, tokenizer, text, system_prompt, llm_cfg["max_tokens"]
+        ):
+            if stats is not None:
+                in_tok = stats["input_tokens"]
+                out_tok = stats["output_tokens"]
+                gen_time = stats["gen_time"]
+                truncated = stats["truncated"]
+                full_response = stats["full_text"]
+
+            if not sentence:
+                continue
+
+            a_dur, s_time, i_chars, c_chars, txt_trunc = tts.speak(
+                tts_model, sentence, tts_cfg["speaker"], tts_cfg["sample_rate"]
+            )
+            total_audio_dur += a_dur
+            total_synth_time += s_time
+            total_in_chars += i_chars
+            total_clean_chars += c_chars
+            tts_truncated = tts_truncated or txt_trunc
+
+        tps = f"{out_tok/gen_time:.1f} tok/s" if gen_time > 0 else "N/A tok/s"
+        rtf = f"{total_synth_time/total_audio_dur:.3f}" if total_audio_dur > 0 else "N/A"
+
+        print(f"[Motiram] {full_response}")
+        print(f"[LLM]     {out_tok} tokens  {tps}  {'[TRUNCATED] ' if truncated else ''}({gen_time:.1f}s)")
+        print(f"[RAM]     after LLM → {_ram():.2f} GB")
+        tracker.log_llm(in_tok, out_tok, gen_time, truncated)
+        send({"type": "response", "text": full_response})
+
+        print(f"[TTS]     RTF={rtf}  audio={total_audio_dur:.2f}s  synth={total_synth_time:.2f}s")
         print(f"[RAM]     after TTS → {_ram():.2f} GB\n")
-        tracker.log_tts(in_chars, clean_chars, synth_time, audio_dur_tts, txt_truncated)
+        tracker.log_tts(total_in_chars, total_clean_chars, total_synth_time, total_audio_dur, tts_truncated)
 
         total_latency = time.time() - turn_start
-        tracker.log_turn(trans_time, gen_time, synth_time, total_latency, _ram())
+        tracker.log_turn(trans_time, gen_time, total_synth_time, total_latency, _ram())
 
         is_speaking = False
         send({"type": "done"})
